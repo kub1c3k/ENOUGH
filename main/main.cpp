@@ -10,28 +10,26 @@
 #include "driver/i2c.h"
 #include "esp_log.h"
 
-// Initialize LEDs and Buttons
 Led led0(GPIO_NUM_13);
 Led led1(GPIO_NUM_25);
 Led led2(GPIO_NUM_27);
 Led led3(GPIO_NUM_26);
 
-Button button0(GPIO_NUM_15); // Button 0 for Difficulty 1
-Button button1(GPIO_NUM_18); // Button 1 for Difficulty 2
-Button button2(GPIO_NUM_19); // Button 2 for Difficulty 3
-Button button3(GPIO_NUM_23); // Button 3 for Difficulty 4
+Button button0(GPIO_NUM_15);
+Button button1(GPIO_NUM_18);
+Button button2(GPIO_NUM_19);
+Button button3(GPIO_NUM_23);
 
 std::vector<Led *> leds = {&led0, &led1, &led2, &led3};
 std::vector<Button *> buttons = {&button0, &button1, &button2, &button3};
 
-// Difficulty levels mapped to reaction times
-const int difficultyTimes[] = {5000, 4000, 2000, 1000}; // From easiest to hardest
+const int difficultyTimes[] = {5000, 4000, 2000, 1000};
 
 extern "C" void app_main(void)
 {
-  srand(time(NULL)); // Initialize random seed
+  srand(time(NULL));
 
-  while (1) // Infinite loop for repeated gameplay
+  while (1)
   {
     printf("Select Difficulty Level:\n");
     printf("Button 0: Easiest (5000 ms)\n");
@@ -39,31 +37,29 @@ extern "C" void app_main(void)
     printf("Button 2: Hard (2000 ms)\n");
     printf("Button 3: Hardest (1000 ms)\n");
 
-    // Wait for a button press to select difficulty
     int selectedDifficulty = -1;
     while (selectedDifficulty == -1)
     {
       for (int i = 0; i < buttons.size(); i++)
       {
-        if (buttons[i]->isPressed()) // If button is pressed, select the difficulty
+        if (buttons[i]->isPressed())
         {
           selectedDifficulty = i;
           printf("Difficulty Level %d selected!\n", selectedDifficulty + 1);
-          while (buttons[i]->isPressed()) // Wait until button is released
+          while (buttons[i]->isPressed())
           {
-            vTaskDelay(pdMS_TO_TICKS(10)); // Debounce delay
+            vTaskDelay(pdMS_TO_TICKS(10));
           }
           break;
         }
       }
-      vTaskDelay(pdMS_TO_TICKS(50)); // Small delay to prevent CPU overload
+      vTaskDelay(pdMS_TO_TICKS(50));
     }
 
-    int reactionTime = difficultyTimes[selectedDifficulty]; // Set the reaction time based on difficulty
+    int reactionTime = difficultyTimes[selectedDifficulty];
 
     printf("Press any button to start the game!\n");
 
-    // Wait for any button press to start
     bool startPressed = false;
     while (!startPressed)
     {
@@ -74,15 +70,14 @@ extern "C" void app_main(void)
           printf("Button %d pressed to start!\n", i);
           startPressed = true;
 
-          // Wait until all buttons are released before starting
           while (buttons[i]->isPressed())
           {
-            vTaskDelay(pdMS_TO_TICKS(10)); // Debounce delay
+            vTaskDelay(pdMS_TO_TICKS(10));
           }
           break;
         }
       }
-      vTaskDelay(pdMS_TO_TICKS(50)); // Small delay to prevent CPU overload
+      vTaskDelay(pdMS_TO_TICKS(50));
     }
 
     bool gameRunning = true;
@@ -90,33 +85,33 @@ extern "C" void app_main(void)
 
     while (gameRunning)
     {
-      int rd_num = rand() % leds.size(); // Pick a random LED
-      leds[rd_num]->on();                // Light up the selected LED
+      int rd_num = rand() % leds.size();
+      leds[rd_num]->on();
       printf("LED %d is ON\n", rd_num);
 
-      TickType_t startTime = xTaskGetTickCount(); // Start timer
+      TickType_t startTime = xTaskGetTickCount();
       bool correctButtonPressed = false;
 
       while (xTaskGetTickCount() - startTime < pdMS_TO_TICKS(reactionTime))
       {
         for (int i = 0; i < buttons.size(); i++)
         {
-          if (buttons[i]->isPressed()) // Check if any button is pressed
+          if (buttons[i]->isPressed())
           {
-            if (i == rd_num) // Correct button pressed
+            if (i == rd_num)
             {
               correctButtonPressed = true;
               printf("Correct button %d pressed!\n", i);
-              leds[rd_num]->off();                                                    // Turn off the LED
-              reactionTime = (reactionTime > 200) ? reactionTime - 50 : reactionTime; // Decrease time
+              leds[rd_num]->off();
+              reactionTime = (reactionTime > 200) ? reactionTime - 50 : reactionTime;
               break;
             }
-            else // Wrong button pressed
+            else
             {
               printf("Wrong button %d pressed! You lost!\n", i);
-              leds[rd_num]->off(); // Turn off the LED
+              leds[rd_num]->off();
               printf("Blinking LEDs...\n");
-              for (int j = 0; j < 5; j++) // Blink LEDs 5 times
+              for (int j = 0; j < 5; j++)
               {
                 for (auto led : leds)
                 {
@@ -129,20 +124,20 @@ extern "C" void app_main(void)
                 }
                 vTaskDelay(pdMS_TO_TICKS(200));
               }
-              gameRunning = false; // End game
+              gameRunning = false;
               break;
             }
           }
         }
-        if (!gameRunning || correctButtonPressed) // Break out of the loop if game ends
+        if (!gameRunning || correctButtonPressed)
           break;
       }
 
-      if (!correctButtonPressed && gameRunning) // Player failed to press the correct button in time
+      if (!correctButtonPressed && gameRunning)
       {
         printf("You lost! Time ran out!\n");
         printf("Blinking LEDs...\n");
-        for (int i = 0; i < 5; i++) // Blink LEDs 5 times
+        for (int i = 0; i < 5; i++)
         {
           for (auto led : leds)
           {
@@ -155,14 +150,13 @@ extern "C" void app_main(void)
           }
           vTaskDelay(pdMS_TO_TICKS(200));
         }
-        gameRunning = false; // End game
+        gameRunning = false;
       }
 
       if (gameRunning)
       {
         printf("Press any button to continue to the next round.\n");
 
-        // Wait for any button press to continue
         bool continuePressed = false;
         while (!continuePressed)
         {
@@ -173,24 +167,22 @@ extern "C" void app_main(void)
               printf("Button %d pressed to continue!\n", i);
               continuePressed = true;
 
-              // Wait until all buttons are released before proceeding
               while (buttons[i]->isPressed())
               {
-                vTaskDelay(pdMS_TO_TICKS(10)); // Debounce delay
+                vTaskDelay(pdMS_TO_TICKS(10));
               }
               break;
             }
           }
-          vTaskDelay(pdMS_TO_TICKS(50)); // Small delay to prevent CPU overload
+          vTaskDelay(pdMS_TO_TICKS(50));
         }
 
-        vTaskDelay(pdMS_TO_TICKS(500)); // Brief delay before next round
+        vTaskDelay(pdMS_TO_TICKS(500));
       }
     }
 
     printf("Game Over! Press any button to play again!\n");
 
-    // Wait for any button press to restart
     bool restartPressed = false;
     while (!restartPressed)
     {
@@ -201,15 +193,14 @@ extern "C" void app_main(void)
           printf("Button %d pressed to restart!\n", i);
           restartPressed = true;
 
-          // Wait until all buttons are released before restarting
           while (buttons[i]->isPressed())
           {
-            vTaskDelay(pdMS_TO_TICKS(10)); // Debounce delay
+            vTaskDelay(pdMS_TO_TICKS(10));
           }
           break;
         }
       }
-      vTaskDelay(pdMS_TO_TICKS(50)); // Small delay to prevent CPU overload
+      vTaskDelay(pdMS_TO_TICKS(50));
     }
   }
 }
