@@ -103,7 +103,6 @@ extern "C" void app_main(void)
               correctButtonPressed = true;
               printf("Correct button %d pressed!\n", i);
               leds[rd_num]->off();
-              reactionTime = (reactionTime > 200) ? reactionTime - 50 : reactionTime;
               break;
             }
             else
